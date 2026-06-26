@@ -1,0 +1,8 @@
+# De originele formulieren blijven lokaal en komen niet op GitHub.
+data/formulieren/*
+!data/formulieren/.gitkeep
+*.docx
+*.pdf
+
+__pycache__/
+*.pyc

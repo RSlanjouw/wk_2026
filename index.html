@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="De actuele tussenstand en voorspellingen van de WK Experts Poule 2026">
+  <title>WK Experts Poule 2026</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__inner">
+      <div>
+        <p class="eyebrow">WK 2026</p>
+        <h1>WK Experts Poule</h1>
+        <p class="hero__text">Wie kroont zich tot de grootste voetbalkenner van het gezelschap?</p>
+      </div>
+      <div class="live-pill" aria-live="polite">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="load-status">Stand laden…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section id="error-panel" class="message message--error" hidden aria-live="assertive"></section>
+    <section id="warning-panel" class="message message--warning" hidden aria-live="polite"></section>
+
+    <section class="stats" aria-label="Samenvatting">
+      <article class="stat-card">
+        <span class="stat-card__label">Experts</span>
+        <strong id="participant-count" class="stat-card__value">–</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Afgeronde poules</span>
+        <strong id="completed-pools" class="stat-card__value">–</strong>
+        <span class="stat-card__sub">van 12</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Beschikbare punten</span>
+        <strong id="available-points" class="stat-card__value">–</strong>
+        <span class="stat-card__sub">in de poulefase</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-card__label">Bijgewerkt om</span>
+        <strong id="last-updated" class="stat-card__value stat-card__value--small">–</strong>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="ranking-title">
+      <div class="panel__header">
+        <div>
+          <p class="section-kicker">TUSSENSTAND</p>
+          <h2 id="ranking-title">Ranglijst</h2>
+          <p class="panel__intro">Klik op een naam voor de poulevoorspellingen, de vier slechtste nummers drie en de bonusantwoorden.</p>
+        </div>
+        <label class="search">
+          <span class="sr-only">Zoek deelnemer</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+          <input id="search-input" type="search" placeholder="Zoek een expert…" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="table-wrap">
+        <table class="ranking-table">
+          <thead>
+            <tr>
+              <th scope="col" class="rank-column">#</th>
+              <th scope="col">Naam</th>
+              <th scope="col" class="number-column">Punten</th>
+              <th scope="col" class="number-column optional-column">Voltreffers</th>
+              <th scope="col" class="action-column"><span class="sr-only">Bekijken</span></th>
+            </tr>
+          </thead>
+          <tbody id="ranking-body">
+            <tr><td colspan="5" class="loading-cell">Stand wordt berekend…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="empty-search" class="empty-state" hidden>Geen expert gevonden.</p>
+    </section>
+
+    <section id="participant-section" class="panel participant-panel" hidden aria-labelledby="participant-title">
+      <div class="participant-heading">
+        <div>
+          <p class="section-kicker">VOORSPELLINGEN</p>
+          <h2 id="participant-title">Deelnemer</h2>
+          <p id="participant-summary" class="panel__intro"></p>
+        </div>
+        <button id="close-details" class="button button--ghost" type="button">Sluiten</button>
+      </div>
+      <div id="pool-details" class="pool-grid"></div>
+      <div class="worst-thirds-section">
+        <div class="bonus-section__heading">
+          <p class="section-kicker">FASE 1</p>
+          <h3>Slechtste nummers drie</h3>
+        </div>
+        <div id="worst-thirds-details"></div>
+      </div>
+      <div class="bonus-section">
+        <div class="bonus-section__heading">
+          <p class="section-kicker">BONUS</p>
+          <h3>Bonusvoorspellingen</h3>
+        </div>
+        <div id="bonus-details" class="bonus-grid"></div>
+      </div>
+    </section>
+
+    <section class="rules-wrap" aria-labelledby="rules-title">
+      <details class="rules-panel">
+        <summary>
+          <span>
+            <span class="section-kicker">GOED OM TE WETEN</span>
+            <strong id="rules-title">Spelregels en puntentelling</strong>
+          </span>
+          <span class="summary-icon" aria-hidden="true">+</span>
+        </summary>
+        <div class="rules-content">
+          <article class="rule-block">
+            <h3>Fase 1 · Poulefase</h3>
+            <p>Voorspel de eindstand van alle 12 poules. Elk land op de juiste plek is 1 punt: maximaal 4 punten per poule en 48 punten totaal.</p>
+            <p><strong>Vier slechtste nummers drie:</strong> dit is onderdeel van de poulefase en dus geen bonusvraag. Elk correct land is 3 punten waard. Samen zijn deze vier voorspellingen maximaal 12 punten waard.</p>
+            <p>Fase 1 is daarmee maximaal 60 punten waard.</p>
+          </article>
+          <article class="rule-block">
+            <h3>Fase 2 · Zestiende finales</h3>
+            <p>Er zijn 16 wedstrijden. Een correct resultaat levert 3 punten op. Een volledig correcte uitslag levert 5 punten op. Maximaal 80 punten.</p>
+          </article>
+          <article class="rule-block">
+            <h3>Fase 3 · Knock-outfase</h3>
+            <ul>
+              <li>Achtste finales: 4 punten voor het resultaat, 6 punten voor de exacte uitslag.</li>
+              <li>Kwartfinales: 5 punten voor het resultaat, 8 punten voor de exacte uitslag.</li>
+              <li>Halve finales: 6 punten voor het resultaat, 10 punten voor de exacte uitslag.</li>
+              <li>Finale: 8 punten voor het resultaat, 12 punten voor de exacte uitslag.</li>
+            </ul>
+            <p>De troostfinale telt niet mee. Fase 3 is maximaal 112 punten waard.</p>
+          </article>
+          <article class="rule-block rule-block--wide">
+            <h3>Bonusvragen vooraf</h3>
+            <div class="bonus-rules">
+              <p><strong>Finalisten + wereldkampioen:</strong> 15 + 15 punten</p>
+              <p><strong>Topscorer + aantal doelpunten:</strong> 15 + 15 punten</p>
+              <p><strong>Aantal gele/rode kaarten:</strong> 1 punt per kaart</p>
+              <p><strong>Trump doet de aftrap:</strong> 10 punten aftrek</p>
+              <p><strong>Land met de meeste kaarten:</strong> 10 punten</p>
+            </div>
+          </article>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p>WK Experts Poule 2026</p>
+  </footer>
+</body>
+</html>

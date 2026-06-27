@@ -163,9 +163,7 @@ def maak_scatterplot(
     )
 
     ax.set_title(
-        "Hoeveel minuten krijgt Wout Weghorst?\n"
-        "De één ziet een pinchhitter, "
-        "de ander een volledige Netflix-serie.",
+        "Hoeveel minuten krijgt Wout Weghorst?\n",
         fontsize=15,
         pad=14,
     )

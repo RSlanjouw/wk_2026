@@ -199,23 +199,63 @@ def extract_all_teams_from_text(value: str) -> tuple[list[str], list[str]]:
 
 
 
-def validate_prediction(name: str, positions: dict[str, int]) -> None:
+def validate_prediction(
+    name: str,
+    positions: dict[str, int],
+    path: Path,
+    log_entries: list[LogEntry],
+) -> None:
+    """Controleer de poulevoorspelling zonder dubbele posities fataal te maken.
+
+    Ontbrekende landen blijven fataal, omdat de CSV anders onvolledig wordt.
+    Dubbele posities of een ontbrekende positie binnen een poule worden alleen
+    als waarschuwing gelogd; het formulier wordt wel geïmporteerd.
+    """
     missing = [team for team in TEAM_BY_COLUMN.values() if team not in positions]
     if missing:
         raise ValueError(
             f"{len(missing)} landen ontbreken: {', '.join(missing[:5])}"
         )
 
-    for pool, teams in POOLS.items():
-        values = [positions[team] for team in teams]
-        if sorted(values) != [1, 2, 3, 4]:
-            raise ValueError(
-                f"Poule {pool} bevat geen geldige unieke posities "
-                f"1,2,3,4: {values}"
-            )
-
     if not name.strip():
         raise ValueError("naam ontbreekt")
+
+    for pool, teams in POOLS.items():
+        values = [positions[team] for team in teams]
+
+        # Waarden buiten 1 t/m 4 blijven ongeldig.
+        invalid_values = [value for value in values if value not in {1, 2, 3, 4}]
+        if invalid_values:
+            raise ValueError(
+                f"Poule {pool} bevat ongeldige posities: {values}"
+            )
+
+        if sorted(values) != [1, 2, 3, 4]:
+            duplicates = sorted({
+                value for value in values
+                if values.count(value) > 1
+            })
+            missing_positions = sorted(set([1, 2, 3, 4]) - set(values))
+
+            details: list[str] = []
+            if duplicates:
+                details.append(
+                    "dubbel: " + ", ".join(map(str, duplicates))
+                )
+            if missing_positions:
+                details.append(
+                    "ontbreekt: " + ", ".join(map(str, missing_positions))
+                )
+
+            log_entries.append(LogEntry(
+                "WAARSCHUWING",
+                path.name,
+                name,
+                f"poule {pool}",
+                "Poule bevat geen unieke verdeling 1, 2, 3 en 4; "
+                "formulier is toch geïmporteerd.",
+                f"{values}" + (f" ({'; '.join(details)})" if details else ""),
+            ))
 
 
 def predicted_third_place_teams(positions: dict[str, int]) -> set[str]:
@@ -776,7 +816,7 @@ def parse_docx(
 
     name = extract_name_docx(document)
     positions = extract_positions_docx(document)
-    validate_prediction(name, positions)
+    validate_prediction(name, positions, path, log_entries)
 
     worst_thirds = extract_worst_thirds_docx(
         document=document,
@@ -796,7 +836,7 @@ def parse_pdf(
     text = extract_pdf_text(path)
     name = extract_name_pdf(text)
     positions = extract_positions_pdf(text)
-    validate_prediction(name, positions)
+    validate_prediction(name, positions, path, log_entries)
 
     worst_thirds = extract_worst_thirds_pdf(
         text=text,

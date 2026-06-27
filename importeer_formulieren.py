@@ -26,6 +26,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from docx import Document
+from docx.document import Document as _Document
+from docx.table import Table
+from docx.text.paragraph import Paragraph
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
 from pypdf import PdfReader
 
 
@@ -229,12 +234,29 @@ def extract_name_docx(document: Document) -> str:
 
 
 def extract_positions_docx(document: Document) -> dict[str, int]:
+    """Lees alleen de echte pouletabel(len), nooit de voorbeeldtabel onderaan."""
     positions: dict[str, int] = {}
 
-    # Scan alle tabellen, zodat ook een formulier met meerdere pouletabellen werkt.
     for table in document.tables:
+        all_values = [
+            normalize(cell.text)
+            for row in table.rows
+            for cell in row.cells
+        ]
+
+        # Alleen tabellen met echte poulekoppen verwerken.
+        has_pool_header = any(
+            re.fullmatch(r"poule [a-l]", value)
+            for value in all_values
+        )
+        if not has_pool_header:
+            continue
+
         for row in table.rows:
-            cells = [cell.text.replace("\n", " ").strip() for cell in row.cells]
+            cells = [
+                cell.text.replace("\n", " ").strip()
+                for cell in row.cells
+            ]
 
             for team_col in range(len(cells) - 1):
                 team, _ = resolve_team(cells[team_col])
@@ -246,6 +268,43 @@ def extract_positions_docx(document: Document) -> dict[str, int]:
                     positions[team] = int(match.group(1))
 
     return positions
+
+
+def iter_block_items(document: _Document):
+    """Loop door alinea's en tabellen in de echte documentvolgorde."""
+    body = document.element.body
+    for child in body.iterchildren():
+        if isinstance(child, CT_P):
+            yield Paragraph(child, document)
+        elif isinstance(child, CT_Tbl):
+            yield Table(child, document)
+
+
+def find_worst_thirds_table_in_document_order(document: _Document):
+    """Vind uitsluitend de invultabel vóór 'Bonusvragen'."""
+    in_section = False
+
+    for block in iter_block_items(document):
+        if isinstance(block, Paragraph):
+            value = normalize(block.text)
+
+            if (
+                "vier slechtste nummers drie" in value
+                or (
+                    "slechtste nummers drie" in value
+                    and "verlaten" in value
+                )
+            ):
+                in_section = True
+                continue
+
+            if in_section and "bonusvragen" in value:
+                return None
+
+        elif isinstance(block, Table) and in_section:
+            return block
+
+    return None
 
 
 def table_plain_values(table) -> list[str]:
@@ -304,58 +363,37 @@ def extract_worst_thirds_docx(
     positions: dict[str, int],
     log_entries: list[LogEntry],
 ) -> list[str]:
-    table = find_worst_thirds_table_docx(document)
+    # Gebruik de documentvolgorde, niet een globale tabelheuristiek.
+    # Anders kan de voorbeeldtabel onderaan ten onrechte worden gelezen.
+    table = find_worst_thirds_table_in_document_order(document)
 
-    raw_values: list[str] = []
+    if table is None:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Geen invultabel tussen de uitleg en Bonusvragen gevonden.",
+        ))
+        return []
+
+    raw_values = table_plain_values(table)
     teams: list[str] = []
     unknown_values: list[str] = []
     normalized_aliases: list[str] = []
 
-    if table is not None:
-        raw_values = table_plain_values(table)
+    for value in raw_values:
+        if re.fullmatch(r"\s*\d+\s*", value):
+            continue
 
-        for value in raw_values:
-            if re.fullmatch(r"\s*\d+\s*", value):
-                continue
-
-            found, normalizations = extract_all_teams_from_text(value)
-            if found:
-                teams.extend(found)
-                normalized_aliases.extend(normalizations)
-            else:
-                unknown_values.append(value)
-
-    # Fallback voor formulieren waarin de vier landen niet in een losse tabel staan.
-    if len(set(teams)) < 4:
-        full_text_parts: list[str] = []
-
-        for paragraph in document.paragraphs:
-            value = " ".join(paragraph.text.split()).strip()
-            if value:
-                full_text_parts.append(value)
-
-        for doc_table in document.tables:
-            full_text_parts.extend(table_plain_values(doc_table))
-
-        full_text = "\n".join(full_text_parts)
-        normalized_full_text = normalize(full_text)
-
-        start = re.search(
-            r"welke\s+vier\s+slechtste\s+nummers?\s+drie.*?verlaten\s*:?",
-            normalized_full_text,
-            flags=re.I | re.S,
-        )
-        end = re.search(r"bonusvragen", normalized_full_text, flags=re.I)
-
-        if start:
-            section = normalized_full_text[
-                start.end(): end.start() if end else len(normalized_full_text)
-            ]
-            found, normalizations = extract_all_teams_from_text(section)
+        found, normalizations = extract_all_teams_from_text(value)
+        if found:
             for team in found:
                 if team not in teams:
                     teams.append(team)
             normalized_aliases.extend(normalizations)
+        elif value.strip():
+            unknown_values.append(value)
 
     if not teams:
         log_entries.append(LogEntry(
@@ -363,7 +401,7 @@ def extract_worst_thirds_docx(
             path.name,
             name,
             "slechtste nummers drie",
-            "Geen herkenbare invoer met slechtste nummers drie gevonden.",
+            "Het invulvak voor de vier slechtste nummers drie is leeg.",
         ))
         return []
 

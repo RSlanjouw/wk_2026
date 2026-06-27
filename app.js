@@ -22,7 +22,11 @@ const BONUS_FIELDS = [
   { key: "bonus_topscorer", label: "Topscorer en doelpunten" },
   { key: "bonus_kaarten", label: "Aantal gele/rode kaarten" },
   { key: "bonus_trump", label: "Trump doet de aftrap bij" },
-  { key: "bonus_kaartenland", label: "Land met de meeste kaarten" },
+  {
+    key: "bonus_meeste_kaarten",
+    fallbackKeys: ["bonus_kaartenland"],
+    label: "Land met de meeste kaarten"
+  },
   { key: "bonus_weghorst", label: "Speelminuten Wout Weghorst" },
 ];
 

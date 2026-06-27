@@ -61,6 +61,14 @@ POOLS: dict[str, list[str]] = {
 
 COLUMNS = [f"{pool}{index}" for pool in POOLS for index in range(1, 5)]
 THIRD_PLACE_COLUMNS = [f"slechtste_3_{index}" for index in range(1, 5)]
+BONUS_COLUMNS = [
+    "bonus_finale",
+    "bonus_topscorer",
+    "bonus_kaarten",
+    "bonus_trump",
+    "bonus_meeste_kaarten",
+    "bonus_weghorst",
+]
 
 TEAM_BY_COLUMN = {
     f"{pool}{index}": team
@@ -610,10 +618,158 @@ def validate_and_log_worst_thirds(
     return unique_teams[:4]
 
 
+
+BONUS_QUESTIONS: list[tuple[str, tuple[str, ...]]] = [
+    (
+        "bonus_finale",
+        (
+            "welk landen spelen de finale en wie wordt wereldkampioen",
+            "welke landen spelen de finale en wie wordt wereldkampioen",
+        ),
+    ),
+    (
+        "bonus_topscorer",
+        ("wie wordt topscorer en met hoeveel doelpunten",),
+    ),
+    (
+        "bonus_kaarten",
+        (
+            "hoeveel gele kaarten worden er uitgedeeld",
+            "hoeveel gele rode kaarten worden er uitgedeeld",
+            "hoeveel gele en rode kaarten worden er uitgedeeld",
+        ),
+    ),
+    (
+        "bonus_trump",
+        (
+            "bij welke wedstrijd en doet trump de aftrap",
+            "bij welke wedstrijden doet trump de aftrap",
+            "bij welke wedstrijd doet trump de aftrap",
+        ),
+    ),
+    (
+        "bonus_meeste_kaarten",
+        (
+            "welk land scoort de meeste kaarten",
+            "welk land krijgt de meeste kaarten",
+        ),
+    ),
+    (
+        "bonus_weghorst",
+        (
+            "hoeveel speelminuten gaat wout weghorst maken",
+            "hoeveel speelminuten maakt wout weghorst",
+        ),
+    ),
+]
+
+
+def bonus_column_for_question(question: str) -> str | None:
+    normalized = normalize(question)
+    for column, variants in BONUS_QUESTIONS:
+        if any(variant in normalized for variant in variants):
+            return column
+    return None
+
+
+def extract_bonus_docx(
+    document: Document,
+    path: Path,
+    name: str,
+    log_entries: list[LogEntry],
+) -> dict[str, str]:
+    """Neem bonusantwoorden letterlijk over uit de antwoordcellen."""
+    answers = {column: "" for column in BONUS_COLUMNS}
+
+    for table in document.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells]
+            if not cells:
+                continue
+
+            # Normaal staat de vraag links en het antwoord rechts.
+            question = cells[0]
+            column = bonus_column_for_question(question)
+            if column is None:
+                continue
+
+            answer = cells[1] if len(cells) > 1 else ""
+            answers[column] = answer.strip()
+
+    for column, _ in BONUS_QUESTIONS:
+        if column not in answers:
+            answers[column] = ""
+
+    missing = [column for column in BONUS_COLUMNS if column not in answers]
+    if missing:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING", path.name, name, "bonusvragen",
+            "Een of meer bonusvragen konden niet worden gevonden.",
+            " | ".join(missing),
+        ))
+
+    return answers
+
+
+def extract_bonus_pdf(
+    text: str,
+    path: Path,
+    name: str,
+    log_entries: list[LogEntry],
+) -> dict[str, str]:
+    """Neem PDF-bonusantwoorden zo letterlijk mogelijk over uit de tekst."""
+    answers = {column: "" for column in BONUS_COLUMNS}
+    compact = " ".join(text.split())
+
+    start = re.search(r"Bonusvragen\s*:\s*(?:Vraag\s+Antwoord\s*)?", compact, re.I)
+    if not start:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING", path.name, name, "bonusvragen",
+            "Sectie Bonusvragen niet gevonden.",
+        ))
+        return answers
+
+    end = re.search(r"Voorbeeld van een poule voorspelling", compact[start.end():], re.I)
+    section = compact[start.end():]
+    if end:
+        section = section[:end.start()]
+
+    question_patterns: list[tuple[str, str]] = [
+        ("bonus_finale", r"Welk[e]? landen spelen de finale en wie wordt wereldkampioen\?"),
+        ("bonus_topscorer", r"Wie wordt topscorer en met hoeveel doelpunten\?"),
+        ("bonus_kaarten", r"Hoeveel gele(?:\s*/?\s*rode| en rode)? kaarten worden er uitgedeeld\?"),
+        ("bonus_trump", r"Bij welke wedstrijd(?:\(en\)|en)? doet Trump de aftrap[^?]*\?"),
+        ("bonus_meeste_kaarten", r"Welk land (?:scoort|krijgt) de meeste kaarten\?"),
+        ("bonus_weghorst", r"Hoeveel speelminuten (?:gaat Wout Weghorst maken|maakt Wout Weghorst)\?"),
+    ]
+
+    matches: list[tuple[int, int, str]] = []
+    for column, pattern in question_patterns:
+        match = re.search(pattern, section, re.I)
+        if match:
+            matches.append((match.start(), match.end(), column))
+
+    matches.sort(key=lambda item: item[0])
+    for index, (_, question_end, column) in enumerate(matches):
+        answer_end = matches[index + 1][0] if index + 1 < len(matches) else len(section)
+        answers[column] = section[question_end:answer_end].strip()
+
+    found_columns = {column for _, _, column in matches}
+    missing = [column for column in BONUS_COLUMNS if column not in found_columns]
+    if missing:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING", path.name, name, "bonusvragen",
+            "Een of meer bonusvragen konden niet worden gevonden.",
+            " | ".join(missing),
+        ))
+
+    return answers
+
+
 def parse_docx(
     path: Path,
     log_entries: list[LogEntry],
-) -> tuple[str, dict[str, int], list[str]]:
+) -> tuple[str, dict[str, int], list[str], dict[str, str]]:
     document = Document(path)
     if not document.tables:
         raise ValueError("onverwacht DOCX-formaat: geen tabellen gevonden")
@@ -629,13 +785,14 @@ def parse_docx(
         positions=positions,
         log_entries=log_entries,
     )
-    return name, positions, worst_thirds
+    bonus = extract_bonus_docx(document, path, name, log_entries)
+    return name, positions, worst_thirds, bonus
 
 
 def parse_pdf(
     path: Path,
     log_entries: list[LogEntry],
-) -> tuple[str, dict[str, int], list[str]]:
+) -> tuple[str, dict[str, int], list[str], dict[str, str]]:
     text = extract_pdf_text(path)
     name = extract_name_pdf(text)
     positions = extract_positions_pdf(text)
@@ -648,7 +805,8 @@ def parse_pdf(
         positions=positions,
         log_entries=log_entries,
     )
-    return name, positions, worst_thirds
+    bonus = extract_bonus_pdf(text, path, name, log_entries)
+    return name, positions, worst_thirds, bonus
 
 
 def discover_files(folder: Path) -> list[Path]:
@@ -676,7 +834,7 @@ def write_predictions(
     rows: list[dict[str, str | int]],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fields = ["naam", *COLUMNS, *THIRD_PLACE_COLUMNS]
+    fields = ["naam", *COLUMNS, *THIRD_PLACE_COLUMNS, *BONUS_COLUMNS]
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -749,9 +907,9 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             if path.suffix.casefold() == ".docx":
-                name, positions, worst_thirds = parse_docx(path, log_entries)
+                name, positions, worst_thirds, bonus = parse_docx(path, log_entries)
             else:
-                name, positions, worst_thirds = parse_pdf(path, log_entries)
+                name, positions, worst_thirds, bonus = parse_pdf(path, log_entries)
 
             name_key = normalize(name)
             if name_key in names_seen:
@@ -769,6 +927,9 @@ def main(argv: list[str] | None = None) -> int:
                     if index < len(worst_thirds)
                     else ""
                 )
+
+            for column in BONUS_COLUMNS:
+                row[column] = bonus.get(column, "")
 
             rows.append(row)
 

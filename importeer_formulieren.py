@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Lees alle WK-pouleformulieren uit een lokale map en maak één compacte CSV.
+"""Lees WK-pouleformulieren uit en maak één compacte CSV.
 
 Standaard:
     invoer:  data/formulieren/
     uitvoer: data/voorspellingen.csv
+    fouten:  data/import_fouten.csv
+    log:     data/import_log.csv
 
-Gebruik:
-    python importeer_formulieren.py
-    python importeer_formulieren.py --invoer "C:/mijn/formulieren"
+De vier slechtste nummers drie worden opgeslagen in:
+    slechtste_3_1, slechtste_3_2, slechtste_3_3, slechtste_3_4
+
+Een afwijking bij deze vier landen blokkeert de rest van het formulier niet.
+De afwijking komt wel duidelijk in import_log.csv te staan.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,20 +22,22 @@ import logging
 import re
 import sys
 import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 
 from docx import Document
 from pypdf import PdfReader
 
-# Verberg onschuldige herstelmeldingen van beschadigde PDF-verwijzingen.
-logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_INPUT = ROOT / "data" / "formulieren"
 DEFAULT_OUTPUT = ROOT / "data" / "voorspellingen.csv"
 DEFAULT_ERRORS = ROOT / "data" / "import_fouten.csv"
+DEFAULT_LOG = ROOT / "data" / "import_log.csv"
 DEFAULT_MAPPING = ROOT / "data" / "kolommen.csv"
-DEFAULT_WORST_THIRDS = ROOT / "data" / "slechtste_nummers_drie.csv"
+
+# Verberg niet-fatale technische pypdf-meldingen.
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 POOLS: dict[str, list[str]] = {
     "A": ["Zuid-Afrika", "Zuid-Korea", "Mexico", "Tsjechië"],
@@ -48,30 +55,24 @@ POOLS: dict[str, list[str]] = {
 }
 
 COLUMNS = [f"{pool}{index}" for pool in POOLS for index in range(1, 5)]
+THIRD_PLACE_COLUMNS = [f"slechtste_3_{index}" for index in range(1, 5)]
+
 TEAM_BY_COLUMN = {
     f"{pool}{index}": team
     for pool, teams in POOLS.items()
     for index, team in enumerate(teams, start=1)
 }
+ALL_TEAMS = set(TEAM_BY_COLUMN.values())
 
-WORST_THIRD_COLUMNS = [
-    "slechtste_3_1",
-    "slechtste_3_2",
-    "slechtste_3_3",
-    "slechtste_3_4",
-]
 
-BONUS_COLUMNS = [
-    "bonus_finale",
-    "bonus_topscorer",
-    "bonus_kaarten",
-    "bonus_trump",
-    "bonus_kaartenland",
-    "bonus_weghorst",
-]
-
-ANSWER_COLUMNS = [*WORST_THIRD_COLUMNS, *BONUS_COLUMNS]
-EMPTY_ANSWERS = {column: "" for column in ANSWER_COLUMNS}
+@dataclass
+class LogEntry:
+    niveau: str
+    bestand: str
+    deelnemer: str
+    onderdeel: str
+    melding: str
+    waarde: str = ""
 
 
 def normalize(value: str) -> str:
@@ -82,7 +83,11 @@ def normalize(value: str) -> str:
     return " ".join(value.split())
 
 
-ALIASES: dict[str, str] = {normalize(team): team for teams in POOLS.values() for team in teams}
+ALIASES: dict[str, str] = {
+    normalize(team): team
+    for teams in POOLS.values()
+    for team in teams
+}
 ALIASES.update({
     "brazilie": "Brazilië",
     "belgie": "België",
@@ -96,202 +101,516 @@ ALIASES.update({
     "kroatie": "Kroatië",
     "saoedi arabie": "Saoedi-Arabië",
     "saoudi arabie": "Saoedi-Arabië",
+    "saudi arabie": "Saoedi-Arabië",
+    "saudie arabie": "Saoedi-Arabië",
+    "saudi arabia": "Saoedi-Arabië",
     "bosnie en herzegovina": "Bosnië en Herzegovina",
+    "bosnie": "Bosnië en Herzegovina",
+    "congo": "DR Congo",
+    "d r congo": "DR Congo",
+    "drc": "DR Congo",
+    "algarije": "Algerije",
+    "paraquay": "Paraguay",
+    "verenigde staten van amerika": "Verenigde Staten",
+    "usa": "Verenigde Staten",
+    "zuid korea": "Zuid-Korea",
+    "zuid afrika": "Zuid-Afrika",
+    "nieuw zeeland": "Nieuw-Zeeland",
 })
 
 
-def canonical_team(value: str) -> str:
+def resolve_team(value: str) -> tuple[str | None, bool]:
+    """Geef (canonieke landnaam, afwijkende schrijfwijze gebruikt)."""
     key = normalize(value)
+    if not key:
+        return None, False
+
     if key in ALIASES:
-        return ALIASES[key]
-    candidates = [(len(alias), team) for alias, team in ALIASES.items() if alias and alias in key]
-    return max(candidates)[1] if candidates else value.strip()
+        canonical = ALIASES[key]
+        return canonical, key != normalize(canonical)
+
+    # Alleen voor cellen/regels met wat extra tekst eromheen.
+    candidates = [
+        (len(alias), alias, team)
+        for alias, team in ALIASES.items()
+        if alias and re.search(rf"\b{re.escape(alias)}\b", key)
+    ]
+    if candidates:
+        _, alias, canonical = max(candidates)
+        return canonical, True
+
+    return None, False
+
+
+def canonical_team(value: str) -> str:
+    team, _ = resolve_team(value)
+    return team or value.strip()
+
+def extract_all_teams_from_text(value: str) -> tuple[list[str], list[str]]:
+    """Vind alle bekende landen in tekst, in leesvolgorde."""
+    normalized = normalize(value)
+    if not normalized:
+        return [], []
+
+    matches: list[tuple[int, int, int, str, str]] = []
+    for alias, canonical in ALIASES.items():
+        for match in re.finditer(rf"\b{re.escape(alias)}\b", normalized):
+            matches.append(
+                (match.start(), match.end(), -len(alias), alias, canonical)
+            )
+
+    matches.sort(key=lambda item: (item[0], item[2], item[1]))
+    selected: list[tuple[int, int, str, str]] = []
+    occupied: list[tuple[int, int]] = []
+
+    for start, end, _, alias, canonical in matches:
+        if any(
+            not (end <= used_start or start >= used_end)
+            for used_start, used_end in occupied
+        ):
+            continue
+        selected.append((start, end, alias, canonical))
+        occupied.append((start, end))
+
+    selected.sort(key=lambda item: item[0])
+
+    teams: list[str] = []
+    normalizations: list[str] = []
+    for _, _, alias, canonical in selected:
+        if canonical not in teams:
+            teams.append(canonical)
+        if alias != normalize(canonical):
+            normalizations.append(f"{alias} → {canonical}")
+
+    return teams, normalizations
+
 
 
 def validate_prediction(name: str, positions: dict[str, int]) -> None:
     missing = [team for team in TEAM_BY_COLUMN.values() if team not in positions]
     if missing:
-        raise ValueError(f"{len(missing)} landen ontbreken: {', '.join(missing[:5])}")
+        raise ValueError(
+            f"{len(missing)} landen ontbreken: {', '.join(missing[:5])}"
+        )
 
     for pool, teams in POOLS.items():
         values = [positions[team] for team in teams]
         if sorted(values) != [1, 2, 3, 4]:
-            raise ValueError(f"Poule {pool} bevat geen geldige unieke posities 1,2,3,4: {values}")
+            raise ValueError(
+                f"Poule {pool} bevat geen geldige unieke posities "
+                f"1,2,3,4: {values}"
+            )
 
     if not name.strip():
         raise ValueError("naam ontbreekt")
 
 
-def clean_answer(value: str) -> str:
-    return " ".join((value or "").replace("\n", " ").split()).strip(" ;|")
+def predicted_third_place_teams(positions: dict[str, int]) -> set[str]:
+    return {team for team, position in positions.items() if position == 3}
 
 
-def find_bonus_tables(document: Document) -> tuple[list[str], dict[str, str]]:
-    """Zoek de vier slechtste nummers drie en de bonusvragen zonder vaste tabelnummers te veronderstellen."""
-    worst_thirds: list[str] = []
-    answers = dict(EMPTY_ANSWERS)
-
+def extract_name_docx(document: Document) -> str:
     for table in document.tables:
-        rows = [[clean_answer(cell.text) for cell in row.cells] for row in table.rows]
-        if not rows:
-            continue
+        for row in table.rows:
+            cells = [cell.text.replace("\n", " ").strip() for cell in row.cells]
+            for index, cell in enumerate(cells):
+                if normalize(cell) == "naam" and index + 1 < len(cells):
+                    name = cells[index + 1].strip()
+                    if name:
+                        return name
 
-        # De vier slechtste nummers drie staan meestal als vier rijen met één land per rij.
-        if len(rows) == 4 and all(len(row) >= 1 for row in rows):
-            candidates = [canonical_team(row[0]) for row in rows if row and row[0]]
-            if len(candidates) == 4 and all(team in TEAM_BY_COLUMN.values() for team in candidates):
-                worst_thirds = candidates
-                continue
+    # Fallback voor het vaste oude formaat.
+    if document.tables and len(document.tables[0].rows) > 0:
+        cells = document.tables[0].rows[0].cells
+        if len(cells) >= 2:
+            return cells[1].text.strip()
 
-        # Bonusvragen staan als een Vraag/Antwoord-tabel.
-        header = " ".join(rows[0]).casefold()
-        if "vraag" not in header or "antwoord" not in header:
-            continue
-
-        for row in rows[1:]:
-            if len(row) < 2:
-                continue
-            question = normalize(row[0])
-            answer = clean_answer(row[1])
-            if not answer:
-                continue
-            if "finale" in question and "wereldkampioen" in question:
-                answers["bonus_finale"] = answer
-            elif "topscorer" in question:
-                answers["bonus_topscorer"] = answer
-            elif "hoeveel" in question and "kaarten" in question:
-                answers["bonus_kaarten"] = answer
-            elif "trump" in question and "aftrap" in question:
-                answers["bonus_trump"] = answer
-            elif "land" in question and "meeste kaarten" in question:
-                answers["bonus_kaartenland"] = answer
-            elif "weghorst" in question and "speelminuten" in question:
-                answers["bonus_weghorst"] = answer
-
-    for index, team in enumerate(worst_thirds[:4], start=1):
-        answers[f"slechtste_3_{index}"] = team
-    return worst_thirds, answers
+    raise ValueError("naam niet gevonden")
 
 
-def parse_docx(path: Path) -> tuple[str, dict[str, int], dict[str, str]]:
-    document = Document(path)
-    if len(document.tables) < 2:
-        raise ValueError("onverwacht DOCX-formaat: te weinig tabellen")
-
-    name = document.tables[0].cell(0, 1).text.strip()
+def extract_positions_docx(document: Document) -> dict[str, int]:
     positions: dict[str, int] = {}
 
-    for row in document.tables[1].rows:
-        cells = [cell.text.replace("\n", " ").strip() for cell in row.cells]
-        for team_col in (0, 2, 4):
-            if team_col + 1 >= len(cells) or not cells[team_col]:
-                continue
-            team = canonical_team(cells[team_col])
-            if team not in TEAM_BY_COLUMN.values():
-                continue
-            match = re.search(r"\b([1-4])\b", cells[team_col + 1])
-            if match:
-                positions[team] = int(match.group(1))
+    # Scan alle tabellen, zodat ook een formulier met meerdere pouletabellen werkt.
+    for table in document.tables:
+        for row in table.rows:
+            cells = [cell.text.replace("\n", " ").strip() for cell in row.cells]
 
-    _, bonus = find_bonus_tables(document)
-    validate_prediction(name, positions)
-    return name, positions, bonus
+            for team_col in range(len(cells) - 1):
+                team, _ = resolve_team(cells[team_col])
+                if team not in ALL_TEAMS:
+                    continue
+
+                match = re.fullmatch(r"\s*([1-4])\s*", cells[team_col + 1])
+                if match:
+                    positions[team] = int(match.group(1))
+
+    return positions
 
 
-def extract_teams_in_order(text: str) -> list[str]:
-    normalized = normalize(text)
-    matches: list[tuple[int, int, str]] = []
-    for alias, team in ALIASES.items():
-        for match in re.finditer(rf"\b{re.escape(alias)}\b", normalized):
-            matches.append((match.start(), -len(alias), team))
-    matches.sort()
+def table_plain_values(table) -> list[str]:
+    values: list[str] = []
+    for row in table.rows:
+        for cell in row.cells:
+            value = " ".join(cell.text.replace("\n", " ").split()).strip()
+            if value:
+                values.append(value)
+    return values
 
-    ordered: list[str] = []
-    used_ranges: list[tuple[int, int]] = []
-    for start, negative_length, team in matches:
-        end = start - negative_length
-        if any(start < used_end and end > used_start for used_start, used_end in used_ranges):
+
+def find_worst_thirds_table_docx(document: Document):
+    """Vind de meest waarschijnlijke tabel met de vier slechtste nummers drie."""
+    candidates: list[tuple[int, object]] = []
+
+    for table in document.tables:
+        values = table_plain_values(table)
+        if not values:
             continue
-        if team not in ordered:
-            ordered.append(team)
-            used_ranges.append((start, end))
-    return ordered
+
+        normalized_values = [normalize(value) for value in values]
+
+        # Bonus- en pouletabellen uitsluiten.
+        if any(value in {"vraag", "antwoord"} for value in normalized_values):
+            continue
+        if any(value.startswith("poule ") for value in normalized_values):
+            continue
+
+        recognized = 0
+        for value in values:
+            if re.fullmatch(r"\d+", normalize(value)):
+                continue
+            team, _ = resolve_team(value)
+            if team:
+                recognized += 1
+
+        # Een normale tabel heeft 4 landen, soms plus nummers 1 t/m 4.
+        if 2 <= recognized <= 8 and len(values) <= 12:
+            score = recognized * 10
+            score -= abs(recognized - 4) * 3
+            score -= abs(len(table.rows) - 4)
+            candidates.append((score, table))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
 
 
-PDF_QUESTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("bonus_finale", re.compile(r"Welk(?:e)?\s+landen\s+spelen\s+de\s+finale\s+en\s+wie\s+wordt\s+wereldkampioen\s*\?", re.I)),
-    ("bonus_topscorer", re.compile(r"Wie\s+wordt\s+topscorer\s+en\s+met\s+hoeveel\s+doelpunten\s*\?", re.I)),
-    ("bonus_kaarten", re.compile(r"Hoeveel\s+gele(?:\s*/\s*rode)?\s+kaarten\s+worden\s+er\s+uitgedeeld\s*\?", re.I)),
-    ("bonus_trump", re.compile(r"Bij\s+welke\s+wedstrijd\s*\(\s*en\s*\)\s+doet\s+Trump\s+de\s+aftrap.*?\?", re.I)),
-    ("bonus_kaartenland", re.compile(r"Welk\s+land\s+scoort\s+de\s+meeste\s+kaarten\s*\?", re.I)),
-    ("bonus_weghorst", re.compile(r"Hoeveel\s+speelminuten\s+gaat\s+Wout\s+Weghorst\s+maken\s*\?", re.I)),
-]
+def extract_worst_thirds_docx(
+    document: Document,
+    path: Path,
+    name: str,
+    positions: dict[str, int],
+    log_entries: list[LogEntry],
+) -> list[str]:
+    table = find_worst_thirds_table_docx(document)
+
+    raw_values: list[str] = []
+    teams: list[str] = []
+    unknown_values: list[str] = []
+    normalized_aliases: list[str] = []
+
+    if table is not None:
+        raw_values = table_plain_values(table)
+
+        for value in raw_values:
+            if re.fullmatch(r"\s*\d+\s*", value):
+                continue
+
+            found, normalizations = extract_all_teams_from_text(value)
+            if found:
+                teams.extend(found)
+                normalized_aliases.extend(normalizations)
+            else:
+                unknown_values.append(value)
+
+    # Fallback voor formulieren waarin de vier landen niet in een losse tabel staan.
+    if len(set(teams)) < 4:
+        full_text_parts: list[str] = []
+
+        for paragraph in document.paragraphs:
+            value = " ".join(paragraph.text.split()).strip()
+            if value:
+                full_text_parts.append(value)
+
+        for doc_table in document.tables:
+            full_text_parts.extend(table_plain_values(doc_table))
+
+        full_text = "\n".join(full_text_parts)
+        normalized_full_text = normalize(full_text)
+
+        start = re.search(
+            r"welke\s+vier\s+slechtste\s+nummers?\s+drie.*?verlaten\s*:?",
+            normalized_full_text,
+            flags=re.I | re.S,
+        )
+        end = re.search(r"bonusvragen", normalized_full_text, flags=re.I)
+
+        if start:
+            section = normalized_full_text[
+                start.end(): end.start() if end else len(normalized_full_text)
+            ]
+            found, normalizations = extract_all_teams_from_text(section)
+            for team in found:
+                if team not in teams:
+                    teams.append(team)
+            normalized_aliases.extend(normalizations)
+
+    if not teams:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Geen herkenbare invoer met slechtste nummers drie gevonden.",
+        ))
+        return []
+
+    return validate_and_log_worst_thirds(
+        teams=teams,
+        raw_values=raw_values,
+        unknown_values=unknown_values,
+        normalized_aliases=normalized_aliases,
+        path=path,
+        name=name,
+        positions=positions,
+        log_entries=log_entries,
+    )
 
 
-def parse_pdf_bonus(compact: str) -> dict[str, str]:
-    answers = dict(EMPTY_ANSWERS)
+def extract_pdf_text(path: Path) -> str:
+    reader = PdfReader(path)
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
 
-    worst_match = re.search(
-        r"Tevens\s+willen\s+we\s+graag\s+weten\s+welke\s+vier\s+slechtste\s+nummers\s+drie.*?verlaten\s*:\s*(.*?)\s+Bonusvragen\s*:",
+
+def extract_name_pdf(text: str) -> str:
+    compact = " ".join(text.split())
+    match = re.search(
+        r"Naam:\s*(.*?)\s+Voor de poulefase",
         compact,
         flags=re.I,
     )
-    if worst_match:
-        for index, team in enumerate(extract_teams_in_order(worst_match.group(1))[:4], start=1):
-            answers[f"slechtste_3_{index}"] = team
-
-    bonus_match = re.search(r"Bonusvragen\s*:\s*(.*?)(?:Voorbeeld\s+van\s+een\s+poule\s+voorspelling|$)", compact, flags=re.I)
-    if not bonus_match:
-        return answers
-
-    bonus_text = re.sub(r"^Vraag\s+Antwoord\s*", "", bonus_match.group(1).strip(), flags=re.I)
-    found: list[tuple[int, int, str]] = []
-    for key, pattern in PDF_QUESTION_PATTERNS:
-        match = pattern.search(bonus_text)
-        if match:
-            found.append((match.start(), match.end(), key))
-    found.sort()
-
-    for index, (_, end, key) in enumerate(found):
-        next_start = found[index + 1][0] if index + 1 < len(found) else len(bonus_text)
-        answers[key] = clean_answer(bonus_text[end:next_start])
-
-    return answers
-
-
-def parse_pdf(path: Path) -> tuple[str, dict[str, int], dict[str, str]]:
-    reader = PdfReader(path)
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    compact = " ".join(text.split())
-
-    name_match = re.search(r"Naam:\s*(.*?)\s+Voor de poulefase", compact, flags=re.I)
-    if not name_match:
+    if not match:
         raise ValueError("naam niet gevonden")
-    name = name_match.group(1).strip()
+    return match.group(1).strip()
 
+
+def extract_positions_pdf(text: str) -> dict[str, int]:
+    compact = " ".join(text.split())
     start = re.search(r"Voor de poulefase.*?poule in:\s*", compact, flags=re.I)
     end = re.search(r"Tevens willen", compact, flags=re.I)
+
     if not start:
         raise ValueError("begin van poule-overzicht niet gevonden")
-    pool_text = compact[start.end() : end.start() if end else len(compact)]
-    normalized = normalize(pool_text)
 
+    pool_text = compact[start.end(): end.start() if end else len(compact)]
+    normalized = normalize(pool_text)
     positions: dict[str, int] = {}
+
     for team in TEAM_BY_COLUMN.values():
         aliases = sorted(
-            {alias for alias, canonical in ALIASES.items() if canonical == team},
+            {
+                alias
+                for alias, canonical in ALIASES.items()
+                if canonical == team
+            },
             key=len,
             reverse=True,
         )
         for alias in aliases:
-            match = re.search(rf"\b{re.escape(alias)}\b\s+([1-4])\b", normalized)
+            match = re.search(
+                rf"\b{re.escape(alias)}\b\s+([1-4])\b",
+                normalized,
+            )
             if match:
                 positions[team] = int(match.group(1))
                 break
 
-    bonus = parse_pdf_bonus(compact)
+    return positions
+
+
+def extract_worst_thirds_pdf(
+    text: str,
+    path: Path,
+    name: str,
+    positions: dict[str, int],
+    log_entries: list[LogEntry],
+) -> list[str]:
+    start = re.search(
+        r"Tevens willen.*?verlaten\s*:",
+        text,
+        flags=re.I | re.S,
+    )
+    end = re.search(r"Bonusvragen\s*:", text, flags=re.I)
+
+    if not start:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Begintekst voor slechtste nummers drie niet gevonden.",
+        ))
+        return []
+
+    section = text[start.end(): end.start() if end else len(text)]
+    raw_values = [
+        " ".join(line.split()).strip(" :-\t")
+        for line in section.splitlines()
+        if " ".join(line.split()).strip(" :-\t")
+    ]
+
+    teams, normalized_aliases = extract_all_teams_from_text(section)
+
+    unknown_values: list[str] = []
+    for value in raw_values:
+        found, _ = extract_all_teams_from_text(value)
+        if not found and not re.fullmatch(r"\d+", normalize(value)):
+            unknown_values.append(value)
+
+    return validate_and_log_worst_thirds(
+        teams=teams,
+        raw_values=raw_values,
+        unknown_values=unknown_values,
+        normalized_aliases=normalized_aliases,
+        path=path,
+        name=name,
+        positions=positions,
+        log_entries=log_entries,
+    )
+
+
+def validate_and_log_worst_thirds(
+    teams: list[str],
+    raw_values: list[str],
+    unknown_values: list[str],
+    normalized_aliases: list[str],
+    path: Path,
+    name: str,
+    positions: dict[str, int],
+    log_entries: list[LogEntry],
+) -> list[str]:
+    # Uniek houden, maar de oorspronkelijke volgorde bewaren.
+    unique_teams: list[str] = []
+    duplicates: list[str] = []
+
+    for team in teams:
+        if team in unique_teams:
+            duplicates.append(team)
+        else:
+            unique_teams.append(team)
+
+    if len(unique_teams) != 4:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            f"Er zijn {len(unique_teams)} unieke landen gelezen; verwacht 4.",
+            " | ".join(unique_teams) or "(niets gelezen)",
+        ))
+
+    if duplicates:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Dubbele landen gevonden.",
+            " | ".join(duplicates),
+        ))
+
+    if unknown_values:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Niet-herkende tekst aangetroffen in het invoervak.",
+            " | ".join(unknown_values),
+        ))
+
+    if normalized_aliases:
+        log_entries.append(LogEntry(
+            "INFO",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Afwijkende landnamen automatisch genormaliseerd.",
+            " | ".join(dict.fromkeys(normalized_aliases)),
+        ))
+
+    predicted_thirds = predicted_third_place_teams(positions)
+    not_position_three = [
+        team for team in unique_teams
+        if team not in predicted_thirds
+    ]
+    if not_position_three:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Een of meer gekozen landen staan in de eigen poulevoorspelling "
+            "niet op positie 3.",
+            " | ".join(not_position_three),
+        ))
+
+    # CSV heeft altijd vier vaste kolommen. Bij minder dan vier blijven vakken leeg;
+    # bij meer dan vier worden alleen de eerste vier geschreven en staat dit in de log.
+    if len(unique_teams) > 4:
+        log_entries.append(LogEntry(
+            "WAARSCHUWING",
+            path.name,
+            name,
+            "slechtste nummers drie",
+            "Meer dan vier landen gevonden; alleen de eerste vier zijn opgeslagen.",
+            " | ".join(unique_teams),
+        ))
+
+    return unique_teams[:4]
+
+
+def parse_docx(
+    path: Path,
+    log_entries: list[LogEntry],
+) -> tuple[str, dict[str, int], list[str]]:
+    document = Document(path)
+    if not document.tables:
+        raise ValueError("onverwacht DOCX-formaat: geen tabellen gevonden")
+
+    name = extract_name_docx(document)
+    positions = extract_positions_docx(document)
     validate_prediction(name, positions)
-    return name, positions, bonus
+
+    worst_thirds = extract_worst_thirds_docx(
+        document=document,
+        path=path,
+        name=name,
+        positions=positions,
+        log_entries=log_entries,
+    )
+    return name, positions, worst_thirds
+
+
+def parse_pdf(
+    path: Path,
+    log_entries: list[LogEntry],
+) -> tuple[str, dict[str, int], list[str]]:
+    text = extract_pdf_text(path)
+    name = extract_name_pdf(text)
+    positions = extract_positions_pdf(text)
+    validate_prediction(name, positions)
+
+    worst_thirds = extract_worst_thirds_pdf(
+        text=text,
+        path=path,
+        name=name,
+        positions=positions,
+        log_entries=log_entries,
+    )
+    return name, positions, worst_thirds
 
 
 def discover_files(folder: Path) -> list[Path]:
@@ -305,18 +624,6 @@ def discover_files(folder: Path) -> list[Path]:
     )
 
 
-
-def ensure_worst_thirds_template(path: Path) -> None:
-    """Maak alleen een leeg invoerbestand als het nog niet bestaat."""
-    if path.exists():
-        return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["nummer", "land"])
-        for number in range(1, 5):
-            writer.writerow([number, ""])
-
 def write_mapping(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
@@ -326,10 +633,14 @@ def write_mapping(path: Path) -> None:
             writer.writerow([column, column[0], TEAM_BY_COLUMN[column]])
 
 
-def write_predictions(path: Path, rows: list[dict[str, str | int]]) -> None:
+def write_predictions(
+    path: Path,
+    rows: list[dict[str, str | int]],
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    fields = ["naam", *COLUMNS, *THIRD_PLACE_COLUMNS]
     with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["naam", *COLUMNS, *ANSWER_COLUMNS])
+        writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -342,31 +653,67 @@ def write_errors(path: Path, errors: list[tuple[str, str]]) -> None:
         writer.writerows(errors)
 
 
+def write_log(path: Path, entries: list[LogEntry]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([
+            "niveau",
+            "bestand",
+            "deelnemer",
+            "onderdeel",
+            "melding",
+            "waarde",
+        ])
+        for entry in entries:
+            writer.writerow([
+                entry.niveau,
+                entry.bestand,
+                entry.deelnemer,
+                entry.onderdeel,
+                entry.melding,
+                entry.waarde,
+            ])
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--invoer", type=Path, default=DEFAULT_INPUT, help="map met DOCX- en PDF-formulieren")
-    parser.add_argument("--uitvoer", type=Path, default=DEFAULT_OUTPUT, help="doelbestand voor de compacte CSV")
+    parser.add_argument(
+        "--invoer",
+        type=Path,
+        default=DEFAULT_INPUT,
+        help="map met DOCX- en PDF-formulieren",
+    )
+    parser.add_argument(
+        "--uitvoer",
+        type=Path,
+        default=DEFAULT_OUTPUT,
+        help="doelbestand voor de compacte CSV",
+    )
     args = parser.parse_args(argv)
 
     args.invoer.mkdir(parents=True, exist_ok=True)
     files = discover_files(args.invoer)
+
     if not files:
         print(f"Geen DOCX- of PDF-formulieren gevonden in: {args.invoer}")
         print("Plaats de formulieren in die map en voer het script opnieuw uit.")
         write_mapping(DEFAULT_MAPPING)
-        ensure_worst_thirds_template(DEFAULT_WORST_THIRDS)
         return 1
 
     rows: list[dict[str, str | int]] = []
     errors: list[tuple[str, str]] = []
+    log_entries: list[LogEntry] = []
     names_seen: set[str] = set()
 
     for path in files:
+        log_start = len(log_entries)
+
         try:
             if path.suffix.casefold() == ".docx":
-                name, positions, bonus = parse_docx(path)
+                name, positions, worst_thirds = parse_docx(path, log_entries)
             else:
-                name, positions, bonus = parse_pdf(path)
+                name, positions, worst_thirds = parse_pdf(path, log_entries)
 
             name_key = normalize(name)
             if name_key in names_seen:
@@ -374,25 +721,64 @@ def main(argv: list[str] | None = None) -> int:
             names_seen.add(name_key)
 
             row: dict[str, str | int] = {"naam": name}
+
             for column in COLUMNS:
                 row[column] = positions[TEAM_BY_COLUMN[column]]
-            row.update(bonus)
+
+            for index, column in enumerate(THIRD_PLACE_COLUMNS):
+                row[column] = (
+                    worst_thirds[index]
+                    if index < len(worst_thirds)
+                    else ""
+                )
+
             rows.append(row)
-            print(f"OK  {path.name} -> {name}")
-        except Exception as exc:  # één slecht bestand mag de rest niet blokkeren
+
+            new_entries = log_entries[log_start:]
+            warning_count = sum(
+                entry.niveau == "WAARSCHUWING"
+                for entry in new_entries
+            )
+
+            if warning_count:
+                print(
+                    f"OK  {path.name} -> {name} "
+                    f"({warning_count} waarschuwing(en))"
+                )
+            else:
+                print(f"OK  {path.name} -> {name}")
+
+        except Exception as exc:
             errors.append((path.name, str(exc)))
             print(f"FOUT {path.name}: {exc}", file=sys.stderr)
 
     rows.sort(key=lambda row: normalize(str(row["naam"])))
     write_predictions(args.uitvoer, rows)
     write_mapping(DEFAULT_MAPPING)
-    ensure_worst_thirds_template(DEFAULT_WORST_THIRDS)
     write_errors(DEFAULT_ERRORS, errors)
+    write_log(DEFAULT_LOG, log_entries)
+
+    warnings = sum(
+        entry.niveau == "WAARSCHUWING"
+        for entry in log_entries
+    )
 
     print()
     print(f"Klaar: {len(rows)} deelnemers geschreven naar {args.uitvoer}")
+    print(f"Importlog: {DEFAULT_LOG}")
+
+    if warnings:
+        print(
+            f"LET OP: {warnings} waarschuwing(en) gevonden. "
+            f"Controleer {DEFAULT_LOG.name}."
+        )
+
     if errors:
-        print(f"Controleer {DEFAULT_ERRORS.name}: {len(errors)} bestand(en) konden niet worden verwerkt.")
+        print(
+            f"Controleer {DEFAULT_ERRORS.name}: "
+            f"{len(errors)} bestand(en) konden niet worden verwerkt."
+        )
+
     return 0 if rows else 1
 
 

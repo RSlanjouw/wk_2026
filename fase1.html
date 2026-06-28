@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="De actuele tussenstand en voorspellingen van de WK Experts Poule 2026" name="description"/>
+<title>Fase 1 · WK Experts Poule 2026</title>
+<link href="style.css" rel="stylesheet"/>
+<script defer="" src="app.js"></script>
+<style>
+.phase-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+.phase-nav__link {
+  display: inline-flex;
+  padding: .65rem .9rem;
+  color: inherit;
+  background: #fff;
+  border: 1px solid #dfe5ec;
+  border-radius: 999px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.phase-nav__link.is-active {
+  color: #fff;
+  background: #15804c;
+  border-color: #15804c;
+}
+</style></head>
+<body>
+<header class="hero">
+<div class="hero__inner">
+<div>
+<p class="eyebrow">WK 2026</p>
+<h1>WK Experts Poule</h1>
+<p class="hero__text">Fase 1 · Poulefase</p>
+</div>
+<div aria-live="polite" class="live-pill">
+<span aria-hidden="true" class="live-dot"></span>
+<span id="load-status">Stand laden…</span>
+</div>
+</div>
+</header>
+<main class="page-shell"><nav aria-label="Fases" class="phase-nav">
+<a aria-current="page" class="phase-nav__link is-active" href="fase1.html">
+    Fase 1 · Poulefase
+  </a>
+<a class="phase-nav__link" href="index.html">
+    Fase 2 · Zestiende finales
+  </a>
+</nav>
+<section aria-live="assertive" class="message message--error" hidden="" id="error-panel"></section>
+<section aria-live="polite" class="message message--warning" hidden="" id="warning-panel"></section>
+<section aria-label="Samenvatting" class="stats">
+<article class="stat-card">
+<span class="stat-card__label">Experts</span>
+<strong class="stat-card__value" id="participant-count">–</strong>
+</article>
+<article class="stat-card">
+<span class="stat-card__label">Afgeronde poules</span>
+<strong class="stat-card__value" id="completed-pools">–</strong>
+<span class="stat-card__sub">van 12</span>
+</article>
+<article class="stat-card">
+<span class="stat-card__label">Beschikbare punten</span>
+<strong class="stat-card__value" id="available-points">–</strong>
+<span class="stat-card__sub">in de poulefase</span>
+</article>
+<article class="stat-card">
+<span class="stat-card__label">Laatst bijgewerkt</span>
+<strong class="stat-card__value stat-card__value--small" id="commit-updated">–</strong><span hidden="" id="last-updated"></span>
+</article>
+</section>
+<section aria-labelledby="ranking-title" class="panel">
+<div class="panel__header">
+<div>
+<p class="section-kicker">TUSSENSTAND</p>
+<h2 id="ranking-title">Ranglijst</h2>
+<p class="panel__intro">Klik op een naam voor de poulevoorspellingen, de vier slechtste nummers drie en de bonusantwoorden.</p>
+</div>
+<label class="search">
+<span class="sr-only">Zoek deelnemer</span>
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"></path></svg>
+<input autocomplete="off" id="search-input" placeholder="Zoek een expert…" type="search"/>
+</label>
+</div>
+<div class="table-wrap">
+<table class="ranking-table">
+<thead>
+<tr>
+<th class="rank-column" scope="col">#</th>
+<th scope="col">Naam</th>
+<th class="number-column" scope="col">Punten</th>
+<th class="number-column optional-column" scope="col">Voltreffers</th>
+<th class="action-column" scope="col"><span class="sr-only">Bekijken</span></th>
+</tr>
+</thead>
+<tbody id="ranking-body">
+<tr><td class="loading-cell" colspan="5">Stand wordt berekend…</td></tr>
+</tbody>
+</table>
+</div>
+<p class="empty-state" hidden="" id="empty-search">Geen expert gevonden.</p>
+</section>
+<section aria-labelledby="participant-title" class="panel participant-panel" hidden="" id="participant-section">
+<div class="participant-heading">
+<div>
+<p class="section-kicker">VOORSPELLINGEN</p>
+<h2 id="participant-title">Deelnemer</h2>
+<p class="panel__intro" id="participant-summary"></p>
+</div>
+<button class="button button--ghost" id="close-details" type="button">Sluiten</button>
+</div>
+<div class="pool-grid" id="pool-details"></div>
+<div class="worst-thirds-section">
+<div class="bonus-section__heading">
+<p class="section-kicker">FASE 1</p>
+<h3>Slechtste nummers drie</h3>
+</div>
+<div id="worst-thirds-details"></div>
+</div>
+<div class="bonus-section">
+<div class="bonus-section__heading">
+<p class="section-kicker">BONUS</p>
+<h3>Bonusvoorspellingen</h3>
+</div>
+<div class="bonus-grid" id="bonus-details"></div>
+</div>
+</section>
+<section aria-labelledby="rules-title" class="rules-wrap">
+<details class="rules-panel">
+<summary>
+<span>
+<span class="section-kicker">GOED OM TE WETEN</span>
+<strong id="rules-title">Spelregels en puntentelling</strong>
+</span>
+<span aria-hidden="true" class="summary-icon">+</span>
+</summary>
+<div class="rules-content">
+<article class="rule-block">
+<h3>Fase 1 · Poulefase</h3>
+<p><strong>11 t/m 28 juni.</strong> Voorspel per poule de volledige eindstand van nummer 1 t/m 4.</p>
+<p>Per poule zijn maximaal 4 punten te verdienen. Voor iedere positie die niet goed is, gaat er 1 punt af.</p>
+<p><strong>Vier slechtste nummers drie:</strong> voorspel welke vier nummers drie worden uitgeschakeld. Ieder correct land levert 3 punten op.</p>
+<p><strong>Maximum fase 1: 60 punten.</strong></p>
+</article>
+<article class="rule-block">
+<h3>Fase 2 · Zestiende finales</h3>
+<p><strong>28 juni t/m 4 juli.</strong> Voorspel van 16 wedstrijden het resultaat en de uitslag.</p>
+<p>De uitslag na 90 minuten telt, of na 120 minuten wanneer er verlenging wordt gespeeld. Een eventuele penaltyreeks hoeft niet te worden voorspeld.</p>
+<p>Een correct resultaat levert 3 punten op. Is ook de uitslag correct, dan komen daar 2 punten bij.</p>
+<p><strong>Maximum fase 2: 80 punten.</strong></p>
+</article>
+<article class="rule-block">
+<h3>Fase 3 · Achtste finales t/m finale</h3>
+<p><strong>4 t/m 19 juli.</strong> De troostfinale telt niet mee.</p><p><strong>Let op:</strong> vanaf de kwartfinales en halve finales krijg je minder punten wanneer je niet de juiste teams in de wedstrijd hebt voorspeld. Bij de finale zijn alleen punten te verdienen wanneer beide finalisten juist zijn.</p>
+<ul>
+<li><strong>Achtste finales:</strong> 4 punten voor het juiste resultaat en 6 punten voor de juiste uitslag.</li>
+<li><strong>Kwartfinales met de juiste landen:</strong> 5 punten voor het resultaat en 8 punten voor de uitslag.</li>
+<li><strong>Kwartfinales met één of twee verkeerde landen:</strong> 2 punten voor het resultaat en 4 punten voor de uitslag.</li>
+<li><strong>Halve finales met de juiste landen:</strong> 6 punten voor het resultaat en 10 punten voor de uitslag.</li>
+<li><strong>Halve finales met één of twee verkeerde landen:</strong> 3 punten voor het resultaat en 5 punten voor de uitslag.</li>
+<li><strong>Finale:</strong> 8 punten voor het resultaat en 12 punten voor de uitslag. Alleen met de juiste finalisten zijn punten te verdienen.</li>
+</ul>
+<p><strong>Maximum fase 3: 112 punten.</strong></p>
+</article>
+<article class="rule-block rule-block--wide">
+<h3>Bonusvragen vooraf</h3>
+<div class="bonus-rules">
+<p><strong>Finalisten:</strong> 15 punten</p>
+<p><strong>Wereldkampioen:</strong> 15 punten</p>
+<p><strong>Topscorer:</strong> 15 punten</p>
+<p><strong>Aantal doelpunten topscorer:</strong> 15 punten, met 2 punten aftrek per doelpunt verschil</p>
+<p><strong>Aantal gele kaarten:</strong> maximaal 15 punten, met 1 punt aftrek per 5 kaarten verschil</p>
+<p><strong>Trump doet de aftrap:</strong> 10 punten aftrek</p>
+<p><strong>Land met de meeste kaarten:</strong> 10 punten</p>
+<p><strong>Speelminuten Wout Weghorst:</strong> 5 punten</p>
+</div>
+</article>
+<article class="rule-block">
+<h3>Planning</h3>
+<ul>
+<li><strong>Voor 11 juni:</strong> inschrijfgeld betalen, poulefase mailen en bonusvragen beantwoorden.</li>
+<li><strong>Uiterlijk 28 juni:</strong> voorspellingen voor de zestiende finales insturen.</li>
+<li><strong>Uiterlijk 4 juli:</strong> alle verdere knock-outvoorspellingen insturen.</li>
+</ul>
+<p>Je levert dus drie keer voorspellingen aan.</p>
+</article>
+<article class="rule-block">
+<h3>Prijzen</h3>
+<p>De volledige deelnemersinzet wordt beschikbaar gesteld als prijzengeld. Daarnaast kunnen sponsorprijzen worden toegekend.</p>
+<ul>
+<li>Winnaar: 30% van het prijzengeld</li>
+<li>Nummer 2: 20%</li>
+<li>Nummers 3, 4 en 5: ieder 10%</li>
+<li>Nummers 6 t/m 10: inschrijfgeld retour</li>
+<li>Laatste plaats: voetbalmaaltijd voor twee bij FEBO</li>
+</ul>
+<p>Bij een gelijke eindstand wordt het betreffende prijzengeld gelijk verdeeld.</p>
+</article>
+<article class="rule-block rule-block--wide">
+<h3>Spelvoorwaarden</h3>
+<ul>
+<li>Er geldt geen minimum- of maximumleeftijd.</li>
+<li>De organisatie gebruikt e-mail en mobiel nummer voor communicatie.</li>
+<li>Een deelnemer kan met meerdere inzendingen meedoen; voor iedere deelname geldt opnieuw het inschrijfgeld.</li>
+<li>De organisatie kan het spel wijzigen, onderbreken of beëindigen.</li>
+<li>Een anonieme commissie beslist in gevallen waarin de regels niet voorzien.</li>
+<li>Reacties op mogelijke fouten in uitslagen, puntenscores of ranglijsten zijn welkom.</li>
+</ul>
+</article>
+</div>
+</details>
+</section>
+</main>
+<footer>
+<p>WK Experts Poule 2026</p>
+</footer>
+<script>
+(async function toonLaatsteBijwerking() {
+  const element = document.getElementById("commit-updated");
+  if (!element) return;
+
+  element.textContent = "Laden…";
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/RSlanjouw/wk_2026/commits/main?t=${Date.now()}`,
+      {
+        cache: "no-store",
+        headers: {
+          Accept: "application/vnd.github+json"
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub gaf status ${response.status}`);
+    }
+
+    const commit = await response.json();
+    const datumTekst =
+      commit?.commit?.committer?.date ||
+      commit?.commit?.author?.date;
+
+    if (!datumTekst) {
+      throw new Error("Geen commitdatum ontvangen");
+    }
+
+    const datum = new Date(datumTekst);
+
+    element.textContent = datum.toLocaleString("nl-NL", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+
+    if (commit.sha) {
+      element.title = `Bijgewerkt via commit ${commit.sha.slice(0, 7)}`;
+    }
+  } catch (fout) {
+    console.warn("Laatste bijwerking kon niet worden geladen:", fout);
+    element.textContent = "Niet beschikbaar";
+  }
+})();
+</script></body>
+</html>

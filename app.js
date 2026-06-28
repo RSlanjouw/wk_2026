@@ -1,10 +1,10 @@
 "use strict";
 
 const DATA_FILES = {
-  predictions: "data/voorspellingen.csv",
-  columns: "data/kolommen.csv",
-  results: "data/uitslagen.csv",
-  worstThirds: "data/slechtste_nummers_drie.csv",
+  predictions: "data/fase1/voorspellingen.csv",
+  columns: "data/fase1/kolommen.csv",
+  results: "data/fase1/uitslagen.csv",
+  worstThirds: "data/fase1/slechtste_nummers_drie.csv",
 };
 
 const WORST_THIRD_FIELDS = [

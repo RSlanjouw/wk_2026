@@ -343,13 +343,6 @@ function renderSummary() {
       "Alle 16 wedstrijden hebben een uitslag";
   }
 
-  elements.lastUpdated.textContent = new Date().toLocaleString(
-    "nl-NL",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }
-  );
 }
 
 function predictionForNextMatch(participantName) {
@@ -612,6 +605,53 @@ function openParticipant(name) {
   });
 }
 
+async function loadLastCommitDate() {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/RSlanjouw/wk_2026/commits/main?t=${Date.now()}`,
+      {
+        cache: "no-store",
+        headers: {
+          Accept: "application/vnd.github+json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub gaf status ${response.status}`);
+    }
+
+    const commit = await response.json();
+
+    const dateText =
+      commit?.commit?.committer?.date ||
+      commit?.commit?.author?.date;
+
+    if (!dateText) {
+      throw new Error("Geen commitdatum ontvangen.");
+    }
+
+    const date = new Date(dateText);
+
+    elements.lastUpdated.textContent = date.toLocaleString("nl-NL", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    if (commit.sha) {
+      elements.lastUpdated.title =
+        `Laatste commit: ${commit.sha.slice(0, 7)}`;
+    }
+  } catch (error) {
+    console.warn(
+      "Laatste commitdatum kon niet worden geladen:",
+      error
+    );
+
+    elements.lastUpdated.textContent = "Niet beschikbaar";
+  }
+}
+
 async function initialize() {
   try {
     const [phase1Rows, predictionRows, resultRows] =
@@ -629,6 +669,7 @@ async function initialize() {
 
     renderSummary();
     renderRanking();
+    await loadLastCommitDate();
 
     elements.loadStatus.textContent =
       "Stand is actueel";

@@ -178,15 +178,46 @@ function scorePrediction(prediction, result) {
     };
   }
 
-  const predictedHome = number(prediction.voorspeld_thuis);
-  const predictedAway = number(prediction.voorspeld_uit);
+  const predictedHomeText =
+    String(prediction.voorspeld_thuis ?? "").trim();
+  const predictedAwayText =
+    String(prediction.voorspeld_uit ?? "").trim();
+
+  // Een lege voorspelling is niet hetzelfde als 0-0.
+  if (predictedHomeText === "" || predictedAwayText === "") {
+    return {
+      points: 0,
+      exact: false,
+      processed: true,
+    };
+  }
+
+  const predictedHome = Number(predictedHomeText);
+  const predictedAway = Number(predictedAwayText);
   const actualHome = number(result.werkelijk_thuis);
   const actualAway = number(result.werkelijk_uit);
+  const predictedPenalty =
+    String(prediction.winnaar_na_penalties ?? "").trim();
+  const actualPenalty =
+    String(result.winnaar_na_penalties ?? "").trim();
+
+  const predictedTie = predictedHome === predictedAway;
+  const actualTie = actualHome === actualAway;
+
+  // Gelijk voorspeld zonder penaltywinnaar: nooit exact, maar wel maximaal
+  // 3 punten wanneer de echte wedstrijd ook gelijk eindigt.
+  if (predictedTie && predictedPenalty === "") {
+    return {
+      points: actualTie ? 3 : 0,
+      exact: false,
+      processed: true,
+    };
+  }
 
   const predictedType = resultType(
     predictedHome,
     predictedAway,
-    prediction.winnaar_na_penalties,
+    predictedPenalty,
     prediction.thuis,
     prediction.uit
   );
@@ -194,7 +225,7 @@ function scorePrediction(prediction, result) {
   const actualType = resultType(
     actualHome,
     actualAway,
-    result.winnaar_na_penalties,
+    actualPenalty,
     result.thuis,
     result.uit
   );
@@ -203,15 +234,10 @@ function scorePrediction(prediction, result) {
   const correctScore =
     predictedHome === actualHome &&
     predictedAway === actualAway;
-
-  const tieRequiresWinner = actualHome === actualAway;
-
   const correctPenaltyWinner =
-    !tieRequiresWinner ||
-    normalize(prediction.winnaar_na_penalties) ===
-      normalize(result.winnaar_na_penalties);
-
-  const exact = correctScore && correctPenaltyWinner;
+    !actualTie || normalize(predictedPenalty) === normalize(actualPenalty);
+  const exact =
+    correctResult && correctScore && correctPenaltyWinner;
 
   return {
     points: exact ? 5 : correctResult ? 3 : 0,
@@ -342,7 +368,6 @@ function renderSummary() {
     elements.nextOpenMatchNumber.textContent =
       "Alle 16 wedstrijden hebben een uitslag";
   }
-
 }
 
 function predictionForNextMatch(participantName) {
@@ -622,7 +647,6 @@ async function loadLastCommitDate() {
     }
 
     const commit = await response.json();
-
     const dateText =
       commit?.commit?.committer?.date ||
       commit?.commit?.author?.date;
@@ -643,11 +667,7 @@ async function loadLastCommitDate() {
         `Laatste commit: ${commit.sha.slice(0, 7)}`;
     }
   } catch (error) {
-    console.warn(
-      "Laatste commitdatum kon niet worden geladen:",
-      error
-    );
-
+    console.warn("Laatste commitdatum kon niet worden geladen:", error);
     elements.lastUpdated.textContent = "Niet beschikbaar";
   }
 }

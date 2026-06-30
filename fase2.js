@@ -183,7 +183,6 @@ function scorePrediction(prediction, result) {
   const predictedAwayText =
     String(prediction.voorspeld_uit ?? "").trim();
 
-  // Een lege voorspelling is niet hetzelfde als 0-0.
   if (predictedHomeText === "" || predictedAwayText === "") {
     return {
       points: 0,
@@ -196,49 +195,27 @@ function scorePrediction(prediction, result) {
   const predictedAway = Number(predictedAwayText);
   const actualHome = number(result.werkelijk_thuis);
   const actualAway = number(result.werkelijk_uit);
-  const predictedPenalty =
-    String(prediction.winnaar_na_penalties ?? "").trim();
-  const actualPenalty =
-    String(result.winnaar_na_penalties ?? "").trim();
 
-  const predictedTie = predictedHome === predictedAway;
-  const actualTie = actualHome === actualAway;
+  const predictedResult =
+    predictedHome > predictedAway
+      ? "home"
+      : predictedAway > predictedHome
+        ? "away"
+        : "draw";
 
-  // Gelijk voorspeld zonder penaltywinnaar: nooit exact, maar wel maximaal
-  // 3 punten wanneer de echte wedstrijd ook gelijk eindigt.
-  if (predictedTie && predictedPenalty === "") {
-    return {
-      points: actualTie ? 3 : 0,
-      exact: false,
-      processed: true,
-    };
-  }
+  const actualResult =
+    actualHome > actualAway
+      ? "home"
+      : actualAway > actualHome
+        ? "away"
+        : "draw";
 
-  const predictedType = resultType(
-    predictedHome,
-    predictedAway,
-    predictedPenalty,
-    prediction.thuis,
-    prediction.uit
-  );
-
-  const actualType = resultType(
-    actualHome,
-    actualAway,
-    actualPenalty,
-    result.thuis,
-    result.uit
-  );
-
-  const correctResult = predictedType === actualType;
-  const correctScore =
+  const correctResult = predictedResult === actualResult;
+  const exact =
     predictedHome === actualHome &&
     predictedAway === actualAway;
-  const correctPenaltyWinner =
-    !actualTie || normalize(predictedPenalty) === normalize(actualPenalty);
-  const exact =
-    correctResult && correctScore && correctPenaltyWinner;
 
+  // De penaltywinnaar telt niet mee voor de puntentelling.
   return {
     points: exact ? 5 : correctResult ? 3 : 0,
     exact,

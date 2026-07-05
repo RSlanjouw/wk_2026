@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+data/fase1/formulieren/*
+data/fase2/formulieren/*
+data/fase3/formulieren/*
+!data/fase1/formulieren/.gitkeep
+!data/fase2/formulieren/.gitkeep
+!data/fase3/formulieren/.gitkeep

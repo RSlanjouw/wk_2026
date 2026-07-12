@@ -9,8 +9,8 @@ r16,G,Argentinië,3,Egypte,2
 r16,H,Zwitserland,0,Colombia,0
 qf,1,Frankrijk,2,Marokko,0
 qf,2,Spanje,2,België,1
-qf,3,Noorwegen,,Engeland,
-qf,4,Argentinië,,Zwitserland,
+qf,3,Noorwegen,1,Engeland,2
+qf,4,Argentinië,3,Zwitserland,1
 sf,X,,,,
 sf,Y,,,,
 f,F,,,,

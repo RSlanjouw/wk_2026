@@ -11,6 +11,6 @@ qf,1,Frankrijk,2,Marokko,0
 qf,2,Spanje,2,België,1
 qf,3,Noorwegen,1,Engeland,2
 qf,4,Argentinië,3,Zwitserland,1
-sf,X,Frankrijk,,Spanje,
+sf,X,Frankrijk,0,Spanje,2
 sf,Y,Engeland,,Argentinië,
 f,F,,,,

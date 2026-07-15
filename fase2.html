@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta
+    name="description"
+    content="De actuele tussenstand van fase 2 van de WK Experts Poule 2026"
+  >
+  <title>Fase 2 · WK Experts Poule 2026</title>
+  <link rel="stylesheet" href="fase2.css">
+  <script defer src="fase2.js"></script>
+</head>
+<body>
+<header class="hero">
+  <div class="hero__inner">
+    <div>
+      <p class="eyebrow">WK 2026</p>
+      <h1>WK Experts Poule</h1>
+      <p class="hero__text">Fase 2 · Zestiende finales</p>
+    </div>
+
+    <div class="live-pill" aria-live="polite">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span id="load-status">Stand laden…</span>
+    </div>
+  </div>
+</header>
+
+<main class="page-shell">
+  <nav class="phase-nav" aria-label="Fases">
+    <a href="fase1.html">Fase 1 · Poulefase</a>
+    <a class="is-active" href="index.html" aria-current="page">
+      Fase 2 · Zestiende finales
+    </a>
+  <a href="index.html">Fase 3 · Ontknoping</a>
+</nav>
+
+  <section
+    class="message message--error"
+    id="error-panel"
+    aria-live="assertive"
+    hidden
+  ></section>
+
+  <section class="stats" aria-label="Samenvatting">
+    <article class="stat-card">
+      <span>Experts</span>
+      <strong id="participant-count">–</strong>
+    </article>
+
+    <article class="stat-card">
+      <span>Wedstrijden verwerkt</span>
+      <strong id="completed-matches">–</strong>
+      <small>van 16</small>
+    </article>
+
+    <article class="stat-card">
+      <span>Beschikbare punten fase 2</span>
+      <strong id="available-points">–</strong>
+      <small>maximaal 80</small>
+    </article>
+
+    <article class="stat-card stat-card--fixture">
+      <span>Eerste open wedstrijd</span>
+      <strong class="small-value" id="next-open-match">–</strong>
+      <small id="next-open-match-number"></small>
+    </article>
+
+    <article class="stat-card">
+      <span>Laatst geladen</span>
+      <strong class="small-value" id="last-updated">–</strong>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="panel__header">
+      <div>
+        <p class="section-kicker">TUSSENSTAND</p>
+        <h2>Algemeen klassement</h2>
+        <p>Fase 1 en fase 2 worden automatisch bij elkaar opgeteld.</p>
+      </div>
+
+      <label class="search">
+        <span class="sr-only">Zoek deelnemer</span>
+        <input
+          id="search-input"
+          type="search"
+          placeholder="Zoek een expert…"
+          autocomplete="off"
+        >
+      </label>
+    </div>
+
+    <div class="table-wrap">
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Naam</th>
+            <th>Fase 1</th>
+            <th>Fase 2</th>
+            <th class="next-match-column">Volgende wedstrijd</th>
+            <th class="optional-column">Exact</th>
+            <th>Totaal</th>
+            <th><span class="sr-only">Details</span></th>
+          </tr>
+        </thead>
+        <tbody id="ranking-body">
+          <tr>
+            <td colspan="8" class="loading-cell">
+              Stand wordt berekend…
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p id="empty-search" class="empty-state" hidden>
+      Geen expert gevonden.
+    </p>
+  </section>
+
+  <section
+    class="panel participant-panel"
+    id="participant-section"
+    hidden
+  >
+    <div class="participant-heading">
+      <div>
+        <p class="section-kicker">VOORSPELLINGEN FASE 2</p>
+        <h2 id="participant-title">Deelnemer</h2>
+        <p id="participant-summary"></p>
+      </div>
+
+      <button id="close-details" class="button" type="button">
+        Sluiten
+      </button>
+    </div>
+
+    <div class="detail-layout">
+      <div id="match-details" class="match-grid"></div>
+
+      <aside class="score-overview">
+        <article>
+          <span>Fase 1</span>
+          <strong id="detail-phase1">–</strong>
+        </article>
+
+        <article>
+          <span>Fase 2</span>
+          <strong id="detail-phase2">–</strong>
+        </article>
+
+        <article>
+          <span>Exacte uitslagen</span>
+          <strong id="detail-exact">–</strong>
+        </article>
+
+        <article>
+          <span>Totaal</span>
+          <strong id="detail-total">–</strong>
+        </article>
+      </aside>
+    </div>
+  </section>
+
+  <section class="rules">
+    <details>
+      <summary>
+        <span>
+          <small>GOED OM TE WETEN</small>
+          <strong>Puntentelling fase 2</strong>
+        </span>
+        <span aria-hidden="true">+</span>
+      </summary>
+
+      <div class="rules__body">
+        <p><strong>Correct resultaat:</strong> 3 punten.</p>
+        <p><strong>Exacte uitslag:</strong> 5 punten in totaal.</p>
+      </div>
+    </details>
+  </section>
+</main>
+
+<footer>WK Experts Poule 2026</footer>
+</body>
+</html>

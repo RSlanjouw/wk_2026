@@ -1,0 +1,22 @@
+BONUSKLASSEMENT WK 2026
+
+Zet deze bestanden samen in één map.
+
+1. Vul bonus_uitslagen.csv stap voor stap aan. Lege velden mogen blijven staan.
+2. Draai vanuit deze map:
+
+   python bereken_bonuspunten.py
+
+3. Het script vernieuwt bonus_scores.csv. De bonuspagina leest dit bestand automatisch.
+4. Open de website via een webserver of GitHub Pages. Door fetch() werkt rechtstreeks dubbelklikken op bonus.html niet in iedere browser.
+
+Bijvoorbeeld lokaal:
+
+   python -m http.server 8000
+
+Open daarna http://localhost:8000/bonus.html
+
+PUNTEN
+- Trump telt niet mee.
+- Weghorst: 5 punten en 1 punt aftrek per begonnen 5 minuten verschil.
+- Alleen ingevulde echte uitkomsten worden nagekeken.

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta
     name="description"
-    content="De actuele tussenstand van fase 2 van de WK Experts Poule 2026"
+    content="De actuele bonusstand van de WK Experts Poule 2026"
   >
-  <title>Fase 2 · WK Experts Poule 2026</title>
-  <link rel="stylesheet" href="fase2.css">
-  <script defer src="fase2.js"></script>
+  <title>Bonusklassement · WK Experts Poule 2026</title>
+  <link rel="stylesheet" href="bonus.css">
+  <script defer src="bonus.js"></script>
 </head>
 <body>
 <header class="hero">
@@ -17,25 +17,23 @@
     <div>
       <p class="eyebrow">WK 2026</p>
       <h1>WK Experts Poule</h1>
-      <p class="hero__text">Fase 2 · Zestiende finales</p>
+      <p class="hero__text">Bonusklassement · stap voor stap bijgewerkt</p>
     </div>
 
     <div class="live-pill" aria-live="polite">
       <span class="live-dot" aria-hidden="true"></span>
-      <span id="load-status">Stand laden…</span>
+      <span id="load-status">Bonusstand laden…</span>
     </div>
   </div>
 </header>
 
 <main class="page-shell">
-  <nav class="phase-nav" aria-label="Fases">
+  <nav class="phase-nav" aria-label="Onderdelen van de poule">
     <a href="fase1.html">Fase 1 · Poulefase</a>
-    <a class="is-active" href="fase2.html" aria-current="page">
-      Fase 2 · Zestiende finales
-    </a>
-  <a href="index.html">Fase 3 · Ontknoping</a>
-  <a href="bonus.html">Bonusklassement</a>
-</nav>
+    <a href="fase2.html">Fase 2 · Zestiende finales</a>
+    <a href="index.html">Fase 3 · Ontknoping</a>
+    <a class="is-active" href="bonus.html" aria-current="page">Bonusklassement</a>
+  </nav>
 
   <section
     class="message message--error"
@@ -51,21 +49,21 @@
     </article>
 
     <article class="stat-card">
-      <span>Wedstrijden verwerkt</span>
-      <strong id="completed-matches">–</strong>
-      <small>van 16</small>
+      <span>Bonusonderdelen verwerkt</span>
+      <strong id="completed-parts">–</strong>
+      <small>van 7</small>
     </article>
 
     <article class="stat-card">
-      <span>Beschikbare punten fase 2</span>
+      <span>Beschikbare bonuspunten</span>
       <strong id="available-points">–</strong>
-      <small>maximaal 80</small>
+      <small>van maximaal 90</small>
     </article>
 
     <article class="stat-card stat-card--fixture">
-      <span>Eerste open wedstrijd</span>
-      <strong class="small-value" id="next-open-match">–</strong>
-      <small id="next-open-match-number"></small>
+      <span>Eerstvolgende open onderdeel</span>
+      <strong class="small-value" id="next-open-part">–</strong>
+      <small id="next-open-description"></small>
     </article>
 
     <article class="stat-card">
@@ -78,8 +76,8 @@
     <div class="panel__header">
       <div>
         <p class="section-kicker">TUSSENSTAND</p>
-        <h2>Algemeen klassement</h2>
-        <p>Fase 1 en fase 2 worden automatisch bij elkaar opgeteld.</p>
+        <h2>Bonusklassement</h2>
+        <p>Alleen onderdelen waarvan de echte uitkomst is ingevuld, tellen al mee.</p>
       </div>
 
       <label class="search">
@@ -99,27 +97,21 @@
           <tr>
             <th>#</th>
             <th>Naam</th>
-            <th>Fase 1</th>
-            <th>Fase 2</th>
-            <th class="next-match-column">Volgende wedstrijd</th>
-            <th class="optional-column">Exact</th>
-            <th>Totaal</th>
+            <th>Punten</th>
+            <th class="optional-column">Beschikbaar</th>
+            <th>Voortgang</th>
             <th><span class="sr-only">Details</span></th>
           </tr>
         </thead>
         <tbody id="ranking-body">
           <tr>
-            <td colspan="8" class="loading-cell">
-              Stand wordt berekend…
-            </td>
+            <td colspan="6" class="loading-cell">Bonusstand wordt geladen…</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <p id="empty-search" class="empty-state" hidden>
-      Geen expert gevonden.
-    </p>
+    <p id="empty-search" class="empty-state" hidden>Geen expert gevonden.</p>
   </section>
 
   <section
@@ -129,38 +121,36 @@
   >
     <div class="participant-heading">
       <div>
-        <p class="section-kicker">VOORSPELLINGEN FASE 2</p>
+        <p class="section-kicker">BONUSVOORSPELLINGEN</p>
         <h2 id="participant-title">Deelnemer</h2>
         <p id="participant-summary"></p>
       </div>
 
-      <button id="close-details" class="button" type="button">
-        Sluiten
-      </button>
+      <button id="close-details" class="button" type="button">Sluiten</button>
     </div>
 
     <div class="detail-layout">
-      <div id="match-details" class="match-grid"></div>
+      <div id="bonus-details" class="bonus-grid"></div>
 
       <aside class="score-overview">
         <article>
-          <span>Fase 1</span>
-          <strong id="detail-phase1">–</strong>
-        </article>
-
-        <article>
-          <span>Fase 2</span>
-          <strong id="detail-phase2">–</strong>
-        </article>
-
-        <article>
-          <span>Exacte uitslagen</span>
-          <strong id="detail-exact">–</strong>
-        </article>
-
-        <article>
-          <span>Totaal</span>
+          <span>Bonuspunten</span>
           <strong id="detail-total">–</strong>
+        </article>
+
+        <article>
+          <span>Beschikbaar</span>
+          <strong id="detail-available">–</strong>
+        </article>
+
+        <article>
+          <span>Verwerkt</span>
+          <strong id="detail-completed">–</strong>
+        </article>
+
+        <article>
+          <span>Status</span>
+          <strong class="small-status" id="detail-status">–</strong>
         </article>
       </aside>
     </div>
@@ -171,14 +161,19 @@
       <summary>
         <span>
           <small>GOED OM TE WETEN</small>
-          <strong>Puntentelling fase 2</strong>
+          <strong>Puntentelling bonusvragen</strong>
         </span>
         <span aria-hidden="true">+</span>
       </summary>
 
-      <div class="rules__body">
-        <p><strong>Correct resultaat:</strong> 3 punten.</p>
-        <p><strong>Exacte uitslag:</strong> 5 punten in totaal.</p>
+      <div class="rules__body rules-grid">
+        <p><strong>Finalisten:</strong> 15 punten als beide landen kloppen.</p>
+        <p><strong>Kampioen:</strong> 15 punten.</p>
+        <p><strong>Topscorer:</strong> 15 punten.</p>
+        <p><strong>Aantal goals:</strong> 15 punten, daarna 2 punten aftrek per goal verschil.</p>
+        <p><strong>Gele kaarten:</strong> 15 punten, daarna 1 punt aftrek per begonnen 5 kaarten verschil.</p>
+        <p><strong>Meeste kaarten:</strong> 10 punten.</p>
+        <p><strong>Weghorst:</strong> 5 punten, daarna 1 punt aftrek per begonnen 5 minuten verschil.</p>
       </div>
     </details>
   </section>

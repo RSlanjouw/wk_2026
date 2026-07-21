@@ -1,52 +1,52 @@
 ﻿rang,naam,punten_finalisten,punten_kampioen,punten_topscorer,punten_topscorer_doelpunten,punten_gele_kaarten,punten_trump,punten_land_meeste_kaarten,punten_weghorst,handmatige_correctie,totaal,beschikbare_punten,onderdelen_verwerkt,onderdelen_totaal,status,controle_opmerking
-1,Bram van Zwienen,15,,,,,0,,3,0,18,20,2,7,voorlopig,
-2,Willem van der Linden,15,,,,,0,,2,0,17,20,2,7,voorlopig,
-3,Brian  Van Zuiden,15,,,,,0,,0,0,15,20,2,7,voorlopig,topscorer controleren; doelpunten topscorer ontbreken
-3,Lodewijk van Pol,15,,,,,0,,0,0,15,20,2,7,voorlopig,
-5,Gert Lanjouw,0,,,,,0,,4,0,4,20,2,7,voorlopig,
-5,Lieuwe Meindersma,0,,,,,0,,4,0,4,20,2,7,voorlopig,
-5,Randall Esajas,0,,,,,0,,4,0,4,20,2,7,voorlopig,
-5,Sander Stok,0,,,,,0,,4,0,4,20,2,7,voorlopig,
-5,Thijs,0,,,,,0,,4,0,4,20,2,7,voorlopig,
-10,Kim van der Linden,0,,,,,0,,3,0,3,20,2,7,voorlopig,
-10,Lara Capitanio,0,,,,,0,,3,0,3,20,2,7,voorlopig,
-10,Lisette,0,,,,,0,,3,0,3,20,2,7,voorlopig,
-10,Marissa,0,,,,,0,,3,0,3,20,2,7,voorlopig,
-10,Sytze Meindersma,0,,,,,0,,3,0,3,20,2,7,voorlopig,
-15,Damian Hoen,0,,,,,0,,2,0,2,20,2,7,voorlopig,
-15,Henny Driessen,0,,,,,0,,2,0,2,20,2,7,voorlopig,kampioen niet opgegeven
-15,Marc,0,,,,,0,,2,0,2,20,2,7,voorlopig,
-15,Noah Holthuis,0,,,,,0,,2,0,2,20,2,7,voorlopig,
-15,Tigo,0,,,,,0,,2,0,2,20,2,7,voorlopig,
-15,Trix Driessen,0,,,,,0,,2,0,2,20,2,7,voorlopig,
-21,Bas Faes,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-21,Bolle(n)boos / Joost Valk,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-21,Dennis van der Linden,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-21,Jonah van Emden,0,,,,,0,,1,0,1,20,2,7,voorlopig,doelpunten topscorer ontbreken
-21,Mike Haverkotte,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-21,Ruben,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-21,Samuel Wilhelm,0,,,,,0,,1,0,1,20,2,7,voorlopig,
-28,Anna van Nouhuys,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Bas Otte,0,,,,,0,,0,0,0,20,2,7,voorlopig,Trump-antwoord controleren
-28,Bert Jorritsma,0,,,,,0,,0,0,0,20,2,7,voorlopig,doelpunten topscorer ontbreken
-28,Boris Aerts,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Daphne Willems,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Dumptrump,0,,,,,0,,0,0,0,20,2,7,voorlopig,doelpunten topscorer ontbreken; Trump-antwoord controleren
-28,Eelke Meindersma,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Finn Acda,0,,,,,0,,0,0,0,20,2,7,voorlopig,Trump-antwoord controleren
-28,Gertrud Poels,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Gorkem Issever,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Jaap Meindersma,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Jan Kappelle Jr.,0,,,,,0,,0,0,0,20,2,7,voorlopig,kampioen niet opgegeven
-28,Jannetta,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Jelle Kappelle,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Jort Lanjouw,0,,,,,0,,0,0,0,20,2,7,voorlopig,kampioen niet opgegeven
-28,Linda van der Knoop,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Marlie Poels,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Mathieu de Jong,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Michiel Hatenboer,0,,,,,0,,0,0,0,20,2,7,voorlopig,kampioen niet opgegeven
-28,Miranda Fennis,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Peleluc,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Ravi Biekram,0,,,,,0,,0,0,0,20,2,7,voorlopig,
-28,Robert Glendenning,0,,,,,0,,0,0,0,20,2,7,voorlopig,doelpunten topscorer ontbreken; Weghorst-minuten ontbreken; Trump-antwoord controleren
-28,ROBIN,0,,,,,0,,0,0,0,20,2,7,voorlopig,
+1,Bram van Zwienen,15,15,15,3,0,0,10,3,0,61,90,7,7,compleet,
+2,Jannetta,0,15,15,15,5,0,10,0,0,60,90,7,7,compleet,
+2,Willem van der Linden,15,15,15,13,0,0,0,2,0,60,90,7,7,compleet,
+4,Daphne Willems,0,15,15,13,0,0,10,0,0,53,90,7,7,compleet,
+5,Gertrud Poels,0,15,15,15,7,0,0,0,0,52,90,7,7,compleet,
+6,Boris Aerts,0,15,0,9,13,0,10,0,0,47,90,7,7,compleet,
+6,Lodewijk van Pol,15,15,0,13,4,0,0,0,0,47,90,7,7,compleet,
+8,Lara Capitanio,0,15,15,7,5,0,0,3,0,45,90,7,7,compleet,
+8,Mathieu de Jong,0,0,15,13,7,0,10,0,0,45,90,7,7,compleet,
+8,Miranda Fennis,0,15,15,15,0,0,0,0,0,45,90,7,7,compleet,
+8,Tigo,0,0,15,13,5,0,10,2,0,45,90,7,7,compleet,
+12,Finn Acda,0,0,15,13,5,0,10,0,0,43,90,7,7,compleet,Trump-antwoord controleren
+12,Lisette,0,0,15,13,2,0,10,3,0,43,90,7,7,compleet,
+14,Dennis van der Linden,0,0,15,13,12,0,0,1,0,41,90,7,7,compleet,
+15,Jan Kappelle Jr.,0,0,15,13,2,0,10,0,0,40,90,7,7,compleet,kampioen niet opgegeven
+15,Noah Holthuis,0,15,0,13,0,0,10,2,0,40,90,7,7,compleet,
+15,Trix Driessen,0,15,0,13,0,0,10,2,0,40,90,7,7,compleet,
+18,Bas Faes,0,0,15,13,0,0,10,1,0,39,90,7,7,compleet,
+18,Mike Haverkotte,0,15,0,13,0,0,10,1,0,39,90,7,7,compleet,
+18,ROBIN,0,15,0,13,11,0,0,0,0,39,90,7,7,compleet,
+21,Anna van Nouhuys,0,0,15,13,0,0,10,0,0,38,90,7,7,compleet,
+22,Bolle(n)boos / Joost Valk,0,15,0,11,0,0,10,1,0,37,90,7,7,compleet,
+23,Linda van der Knoop,0,0,15,11,0,0,10,0,0,36,90,7,7,compleet,
+23,Thijs,0,15,0,13,4,0,0,4,0,36,90,7,7,compleet,
+25,Michiel Hatenboer,0,0,0,15,9,0,10,0,0,34,90,7,7,compleet,kampioen niet opgegeven
+26,Jonah van Emden,0,15,15,0,0,0,0,1,0,31,90,7,7,compleet,doelpunten topscorer ontbreken
+26,Kim van der Linden,0,15,0,13,0,0,0,3,0,31,90,7,7,compleet,
+26,Ruben,0,0,15,15,0,0,0,1,0,31,90,7,7,compleet,
+29,Brian  Van Zuiden,15,15,0,0,0,0,0,0,0,30,90,7,7,compleet,topscorer controleren; doelpunten topscorer ontbreken
+29,Dumptrump,0,15,15,0,0,0,0,0,0,30,90,7,7,compleet,doelpunten topscorer ontbreken; Trump-antwoord controleren
+29,Randall Esajas,0,0,15,11,0,0,0,4,0,30,90,7,7,compleet,
+32,Jelle Kappelle,0,15,0,13,0,0,0,0,0,28,90,7,7,compleet,
+33,Marissa,0,0,15,9,0,0,0,3,0,27,90,7,7,compleet,
+34,Bas Otte,0,15,0,11,0,0,0,0,0,26,90,7,7,compleet,Trump-antwoord controleren
+34,Damian Hoen,0,0,0,13,11,0,0,2,0,26,90,7,7,compleet,
+34,Peleluc,0,0,15,11,0,0,0,0,0,26,90,7,7,compleet,
+37,Sytze Meindersma,0,0,0,11,1,0,10,3,0,25,90,7,7,compleet,
+38,Gert Lanjouw,0,0,0,9,0,0,10,4,0,23,90,7,7,compleet,
+39,Lieuwe Meindersma,0,0,0,11,6,0,0,4,0,21,90,7,7,compleet,
+40,Eelke Meindersma,0,0,0,13,6,0,0,0,0,19,90,7,7,compleet,
+41,Samuel Wilhelm,0,0,0,15,2,0,0,1,0,18,90,7,7,compleet,
+42,Bert Jorritsma,0,0,15,0,0,0,0,0,0,15,90,7,7,compleet,doelpunten topscorer ontbreken
+42,Marc,0,0,0,13,0,0,0,2,0,15,90,7,7,compleet,
+44,Gorkem Issever,0,0,0,13,0,0,0,0,0,13,90,7,7,compleet,
+44,Henny Driessen,0,0,0,9,2,0,0,2,0,13,90,7,7,compleet,kampioen niet opgegeven
+44,Jaap Meindersma,0,0,0,13,0,0,0,0,0,13,90,7,7,compleet,
+44,Jort Lanjouw,0,0,0,13,0,0,0,0,0,13,90,7,7,compleet,kampioen niet opgegeven
+44,Sander Stok,0,0,0,9,0,0,0,4,0,13,90,7,7,compleet,
+49,Marlie Poels,0,0,0,9,0,0,0,0,0,9,90,7,7,compleet,
+50,Ravi Biekram,0,0,0,5,0,0,0,0,0,5,90,7,7,compleet,
+50,Robert Glendenning,0,0,0,0,5,0,0,0,0,5,90,7,7,compleet,doelpunten topscorer ontbreken; Weghorst-minuten ontbreken; Trump-antwoord controleren
